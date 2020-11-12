@@ -27,3 +27,5 @@ def softmax(W, X, C):
 
     return -np.sum([C[k].T * np.log(np.exp(np.dot(X.T, W[k]) - eta) / np.exp(X.T @ W - eta)) for k in range(l)]) / m
 
+
+
