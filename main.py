@@ -2,7 +2,10 @@ import numpy as np
 from scipy.io import loadmat
 
 # Initialize
-x = loadmat('NNdata/PeaksData.mat')
+filenames = ['NNdata/GMMData.mat',
+             'NNdata/PeaksData.mat',
+             'NNdata/SwissRollData.mat']
+x = loadmat(filenames[2])
 Ct, Cv, Yt, Yv = x['Ct'], x['Cv'], x['Yt'], x['Yv']
 
 
@@ -16,6 +19,7 @@ def softmax(W, X, C, b):
     :param X: array[shape=(d,m)], each column is a data sample of dimension d
     :param C: array[shape=(l,m)], each column is a one-hot vector categorical label
     :param b: array[shape=(
+
     :return: objective loss function “soft-max”
     """
 
@@ -25,7 +29,6 @@ def softmax(W, X, C, b):
     eta = max([np.dot(X.T, W[j]) for j in range(d)])
 
     return -np.sum([C[k].T * np.log(np.exp(np.dot(X.T, W[k]) - eta) / np.exp(X.T @ W - eta)) for k in range(l)]) / m
-
 
 
 def dsoftmax_db():
