@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from network import network
+from network import Network
 import matplotlib.pyplot as plt
 
 class Testnetwork(TestCase):
     def setUp(self):
         self.layers = [2, 4, 4, 2]
-        self.net = network(self.layers)
+        self.net = Network(self.layers)
 
     def test_initialize_weights(self):
         self.assertEqual(len(self.net.weights), self.net.L - 1)
