@@ -9,26 +9,26 @@ x = loadmat(filenames[2])
 Ct, Cv, Yt, Yv = x['Ct'], x['Cv'], x['Yt'], x['Yv']
 
 
-# Question 1
-def softmax(W, X, C, b):
+def cross_entropy_objective(weights, biases, X, Y):
     """
     l = [num of categories]
     m = [num of samples]
     d = [length of each sample]
-    :param W: array[shape=(d,l)], each column is a weight vector of dimension d
+    :param weights: array[shape=(d,l)], the last layer weights each column is a weight vector of dimension d
+    :param biases: array[shape=(d,l)]
     :param X: array[shape=(d,m)], each column is a data sample of dimension d
-    :param C: array[shape=(l,m)], each column is a one-hot vector categorical label
-    :param b: array[shape=(
+    :param Y: array[shape=(l,m)], each column is a one-hot vector categorical label
 
-    :return: objective loss function “soft-max”
+    :return: objective softmax distribution on X
     """
 
-    d = len(W)
+    d = len(weights)
     m = len(X.T)
-    l = len(C)
-    eta = max([np.dot(X.T, W[j]) for j in range(d)])
+    l = len(Y)
+    eta = max([np.dot(X.T, weights[j]) for j in range(d)])
 
-    return -np.sum([C[k].T * np.log(np.exp(np.dot(X.T, W[k]) - eta) / np.exp(X.T @ W - eta)) for k in range(l)]) / m
+    return -np.sum(
+        [Y[k].T * np.log(np.exp(np.dot(X.T, weights[k]) - eta) / np.exp(X.T @ weights - eta)) for k in range(l)]) / m
 
 
 def dsoftmax_db():
@@ -49,7 +49,6 @@ def test_derivates():
     :return: results of the gradient test
     """
     raise NotImplementedError
-
 
 
 def gradient_test():
@@ -104,6 +103,7 @@ def compute_forward_pass_on_network(L):
     :param L: num of layers
     :return:
     """
+
 
 # Question 6
 def compute_backward_pass_on_network(L):

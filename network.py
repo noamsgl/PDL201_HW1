@@ -1,4 +1,5 @@
 import numpy as np
+from utils import *
 
 
 class Network:
@@ -12,6 +13,7 @@ class Network:
         self.weights = self.initialize_weights(layers)
         self.biases = self.initialize_biases(layers)
         self.alpha = alpha
+        self.loss =
 
     def stochastic_gradient_descent(self, data, num_epochs, mini_batch_size, test_data=None):
         for epoch in range(num_epochs):
