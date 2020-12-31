@@ -1,4 +1,3 @@
-import numpy as np
 from utils import *
 
 
@@ -13,7 +12,7 @@ class Network:
         self.weights = self.initialize_weights(layers)
         self.biases = self.initialize_biases(layers)
         self.alpha = alpha
-        self.loss =
+
 
     def stochastic_gradient_descent(self, data, num_epochs, mini_batch_size, test_data=None):
         for epoch in range(num_epochs):
@@ -25,24 +24,9 @@ class Network:
 
                 self.train(mini_batch)
 
+
     def train(self, mini_batch):
         pass
-
-    @staticmethod
-    def initialize_weights(layers):
-        list_of_weights = [np.random.random((size_out, size_in)) for size_out, size_in in zip(layers[:-1], layers[1:])]
-        return np.dstack(list_of_weights)
-
-    @staticmethod
-    def initialize_biases(layers):
-        list_of_biases = [np.random.random(size_in) for size_in in layers[1:]]
-        return np.dstack(list_of_biases)
-
-    @staticmethod
-    def get_mini_batches(self, data, mini_batch_size):
-        np.random.shuffle(data)
-        mini_batches = [data[i:i + mini_batch_size] for i in range(0, len(data), mini_batch_size)]
-        return mini_batches
 
     def feedforward(self, mini_batch):
         pass
@@ -55,3 +39,22 @@ class Network:
 
     def update_biases(self, gradients):
         self.biases
+
+
+    def get_mini_batches(self, data, mini_batch_size):
+        np.random.shuffle(data)
+        mini_batches = [data[i:i + mini_batch_size] for i in range(0, len(data), mini_batch_size)]
+        return mini_batches
+
+
+    @staticmethod
+    def initialize_weights(layers):
+        list_of_weights = [np.random.random((size_out, size_in)) for size_out, size_in in
+                           zip(layers[:-1], layers[1:])]
+        return np.dstack(list_of_weights)
+
+    @staticmethod
+    def initialize_biases(layers):
+        list_of_biases = [np.random.random(size_in) for size_in in layers[1:]]
+        return np.dstack(list_of_biases)
+
