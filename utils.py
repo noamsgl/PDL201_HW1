@@ -10,7 +10,7 @@ x = loadmat(filenames[2])
 Ct, Cv, Yt, Yv = x['Ct'], x['Cv'], x['Yt'], x['Yv']
 
 
-def objective(weights, biases, X, Y):
+def objective(X, C, weights, biases):
     """
     gets weights and biases of layer L and returns cross-entropy loss
     :param weights: weight matrix
@@ -20,7 +20,7 @@ def objective(weights, biases, X, Y):
     :return:
     """
     z = weights @ X.T + biases
-    return Y @ (-np.log(softmax(z)))
+    return C @ (-np.log(softmax(z)))
 
 
 def softmax(vec):
@@ -34,73 +34,42 @@ def softmax(vec):
     return np.exp(vec) / sum
 
 
-def grad_objective_data(X, C, W, b):
-    """
-    See section 1.3.3
-    l = num of labels
-    :param X: [x_1 | x_2 | ... | x_m ] in R^(l * m)
-    :param C: [c_1 | c_2 | ... | c_m ] in R^(l * m)
-    :param W: [w_1 | w_2 | ... | w_l ] in R^(n * l)
-    :param b: [biases] in R^l
-    :return: gradient of objective function w.r.t. data
-    """
-    m = len(X.T)
-    return (1 / m) * W @ (np.exp(W.T @ X + b) / (np.sum([np.exp(W[j].T @ X + b) for j in range(len(W))])) - C)
-
-
 def grad_objective_w(X, C, W, b, p=0):
     m = len(X.T)
-    return (1 / m) * X @ (np.exp(X.T @ W[p] + b) / (np.sum([np.exp(W[j].T @ X + b) for j in range(len(W))])) - C[p])
+    return (1 / m) * X @ (np.exp(X.T @ W[p] + b) / (np.sum([np.exp(W[j].T @ X + b) for j in range(len(W))])) - C)
 
 
 def grad_objective_b():
     pass
 
 
-def compute_soft_max_gradient():
-    """compute the gradient of the softmax function with respect to Wj and the bias.
-    See question 1.
-    """
-    raise NotImplementedError
+def gradient_test():
+    # initialize
+    X_plot, Y_1, Y_2 = [], [], []
+    np.random.seed(18)
+    dimension = 10
 
+    X = np.random.randint(0, 11, size=dimension)
+    C = np.zeros(shape=dimension)
+    C[0] += 1
+    weights = np.random.randint(0, 11, size=(dimension, dimension))
+    biases = np.random.randint(0, 11, size=dimension)
+    d = np.random.random(size=dimension)
 
-def test_derivates():
-    """
-    Makes sures the derivatives are correct using the gradient test.
-    See question 1
-    :return: results of the gradient test
-    """
+    objective(X, C, weights, biases)
 
-    # test 1: test w.r.t. weights
-    func = objective
-    grad = grad_objective_w
-    x = np.ones(6)
-    dimension = len(x)
-    gradient_test(func, grad, x, dimension)
-
-
-
-def gradient_test(func, grad, x, dimension):
-    X, Y_1, Y_2 = [], [], []
-
-    d = np.random.random(size=(dimension, 1))
     epsilon = 1
 
     for i in range(100):
-        X.append(i)
+        X_plot.append(i)
         epsilon = (1 / 2) ** i * epsilon
-
-        val1 = abs(func(x + epsilon * d) - func(x))
-        val2 = abs(func(x + epsilon * d) - func(x) - epsilon * d.T @ grad(x))
+        val1 = abs(objective(X, C, weights + epsilon*d, biases) - objective(X, C, weights, biases))
+        val2 = abs(objective(X, C, weights + epsilon*d, biases) - objective(X, C, weights, biases) - epsilon * d.T @ grad_objective_w(X, C, weights, biases))
         Y_1.append(val1)
         Y_2.append(val2)
-    plt.plot(X, Y_1, label='val1')
-    plt.plot(X, Y_2, label='val2')
+    plt.plot(X_plot, Y_1, label='val1')
+    plt.plot(X_plot, Y_2, label='val2')
     plt.show()
-
-    """make sure that the derivatives are okay using the gradient test"""
-
-    raise NotImplementedError
 
 
 # Question 2
@@ -172,3 +141,19 @@ def question_6(L):
     compute_forward_pass_on_network(L)
     compute_backward_pass_on_network(L)
     gradient_test()
+
+
+# Recycle Bin
+
+def grad_objective_data(X, C, W, b):
+    """
+    See section 1.3.3
+    l = num of labels
+    :param X: [x_1 | x_2 | ... | x_m ] in R^(l * m)
+    :param C: [c_1 | c_2 | ... | c_m ] in R^(l * m)
+    :param W: [w_1 | w_2 | ... | w_l ] in R^(n * l)
+    :param b: [biases] in R^l
+    :return: gradient of objective function w.r.t. data
+    """
+    m = len(X.T)
+    return (1 / m) * W @ (np.exp(W.T @ X + b) / (np.sum([np.exp(W[j].T @ X + b) for j in range(len(W))])) - C)
