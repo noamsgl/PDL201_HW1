@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from network import Network
-import matplotlib.pyplot as plt
+from final.network import Network
+
 
 class Testnetwork(TestCase):
     def setUp(self):
