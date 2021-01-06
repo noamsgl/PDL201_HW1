@@ -30,10 +30,8 @@ def F_objective(A, C):
     :return: loss as scalar
     """
     num_samples = C.shape[1]
-    #     z = calc_linear(W,X,B) # z is (num_classes, [, samples])
     a = np.log(A)  # a is (dim_output, [, samples])
     loss = np.sum(a * C)  # loss for each class, loss is (1, dim_output)
-
     return (-1 / num_samples) * np.sum(loss)
 
 

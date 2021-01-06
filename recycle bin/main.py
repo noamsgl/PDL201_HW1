@@ -5,7 +5,8 @@ import numpy as np
 from scipy.io import loadmat
 from tqdm import tqdm
 
-from network import Network
+# from network import Network
+# import Network
 
 DATASETS_PATH = ['NNdata/SwissRollData.mat',
                  'NNdata/PeaksData.mat',
