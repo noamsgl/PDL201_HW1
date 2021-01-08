@@ -137,13 +137,13 @@ class Network:
         # elif optimizer == "momentum" / "adagard":
             # todo some other optimizers
 
-    def train(self, Xt, Ct, test_data=None, Xv=None, Cv=None, score_every_epoch=False, max_epochs=100, batch_size=100, learning_rate=0.1):
+    def train(self, Xt, Ct, test_data=None, max_epochs=100, batch_size=100, learning_rate=0.1):
         assert Xt.shape[0] == self.input_dim, 'input dimension of Xt is different from NET input_dim'
         assert Xt.shape[1] == Ct.shape[1], 'number of samples is different between Xt and Ct'
         # assert (Xv is None and Cv is None) or (Xv is not None and Cv is not None), 'validation X and C must be similar'
-        assert (test_data is None and not score_every_epoch) or (test_data and score_every_epoch)
+        # assert (test_data is None and not score_every_epoch) or (test_data and score_every_epoch)
 
-        if score_every_epoch:
+        if test_data:
             x_plot, y_plots = [], defaultdict(list)
             # TODO - initialize dicts to save score for each epoch
 
@@ -151,13 +151,13 @@ class Network:
             for x, c in self.get_mini_batches(Xt, Ct, batch_size):
                 loss, _ = self.forward(x, c)
                 self.optimize(c, lr=learning_rate)
-            if score_every_epoch:
+            if test_data:
                 x_plot.append(epoch)
                 for ds_name, ds in test_data.items():
                     y_plots[ds_name].append(self.score(ds))
                 pass
                 # TODO - save all scores verify
-        if score_every_epoch:
+        if test_data:
             return x_plot, y_plots
 
 
