@@ -81,7 +81,7 @@ def initialize_steps(layers_sizes):
         theta[i]['b'] = np.zeros((d2, 1))
     return theta
 
-
+# TODO - check if can delete
 def grad_F(X, A, C):
     """
     :param X:  (dim_input, num_samples) input samples

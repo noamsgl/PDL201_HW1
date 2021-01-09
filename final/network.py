@@ -33,10 +33,10 @@ class Network:
         self.optimizer = optimizer
         if optimizer:
             self.steps_for_opt = initialize_steps(self.layers_sizes)
-        self.w_grads = {} # dict to remember calculations of derivatives for backpropogation
-        self.b_grads = {} # dict to remember calculations of derivatives for backpropogation
+        self.w_grads = {} # dict layerNum -> grad of theta[l]['w'] to remember calculations of derivatives for backpropogation
+        self.b_grads = {} # dict layerNum -> grad of theta[l]['b'] to remember calculations of derivatives for backpropogation
 
-        self.theta_for_grad_test = initialize_theta(self.layers_sizes, True)
+        self.theta_for_grad_test = initialize_theta(self.layers_sizes, init_with_none=True)
 
     def set_theta_for_grad_test(self, l, p, theta_for_test):
         self.theta_for_grad_test[l][p] = theta_for_test.copy()
@@ -71,7 +71,7 @@ class Network:
         for l in range(1, self.L):
             self.hidden_forward(l)
         out = self.last_forward()
-        return F_objective(self.a[self.L], c), out
+        return F_objective(out, c), out
 
     def last_forward(self):
         w, b = self.get_w_b(self.L)
@@ -106,9 +106,7 @@ class Network:
         # [self.layers_sizes[self.L - 1], m]
         df_dx = dz_dx.T @ df_dz
         # [output_dim, 1], dz_db is all ones
-        # TODO - check if 2 next lines are equals, delete the one in the comment
         df_db = df_dz @ np.ones((m, 1))
-        # df_db = np.sum(df_dz, axis=1, keepdims=True)
 
         return df_dw, df_dx, df_db
 
@@ -140,9 +138,7 @@ class Network:
         df_dx = dz_dx.T @ df_dz
         # [output_dim, 1], dz_db is all ones
         # TODO - check if need (1/m) *
-        # TODO - check if 2 next lines are equals, delete the one in the comment
         df_db = df_dz @ np.ones((m, 1))
-        # df_db = np.sum(df_dz, axis=1, keepdims=True)
 
         return df_dw, df_dx, df_db
 
@@ -153,32 +149,22 @@ class Network:
             df_da = df_dx.copy()
             self.w_grads[l], df_dx, self.b_grads[l] = self.back_hidden(m, l, df_da)
 
-    def optimize(self, c):
-        self.backprop(c)
+    def update_theta(self, c):
         for l in range(1, self.L + 1):
             if self.optimizer is None:
-                # TODO - check if clip func is good for us, and if needed to be done on each vector seperatly
-                #  or can be done on all matrix
                 w_dec = self.w_grads[l] * self.learning_rate
                 b_dec = self.b_grads[l] * self.learning_rate
-                # self.theta[l]['w'] = np.clip(self.theta[l]['w'] - self.w_grads[l] * self.learning_rate, -1, 1)
-                # self.theta[l]['b'] = np.clip(self.theta[l]['b'] - self.b_grads[l] * self.learning_rate, -1, 1)
-                # self.theta[l]['w'] = self.theta[l]['w'] - self.w_grads[l] * self.learning_rate
-                # self.theta[l]['b'] = self.theta[l]['b'] - self.b_grads[l] * self.learning_rate
             elif self.optimizer == "momentum":
-            # for l in range(1, self.L + 1):
-                # TODO - check if clip func is good for us, and if needed to be done on each vector seperatly
-                #  or can be done on all matrix
                 self.steps_for_opt[l]['w'] = self.steps_for_opt[l]['w'] * self.gamma + self.w_grads[l] * self.learning_rate
                 w_dec = self.steps_for_opt[l]['w']
                 self.steps_for_opt[l]['b'] = self.steps_for_opt[l]['b'] * self.gamma + self.b_grads[l] * self.learning_rate
                 b_dec = self.steps_for_opt[l]['b']
-                # self.theta[l]['w'] = self.theta[l]['w'] - self.steps_for_opt[l]['w']
-                # self.theta[l]['b'] = self.theta[l]['b'] - self.steps_for_opt[l]['b']
-                # self.theta[l]['w'] = np.clip(self.theta[l]['w'] - self.steps_for_opt[l]['w'], -1, 1)
-                # self.theta[l]['b'] = np.clip(self.theta[l]['b'] - self.steps_for_opt[l]['b'], -1, 1)
+            # TODO - check if clip func is good for us, and if needed to be done on each vector seperatly
+            #  or can be done on all matrix
             self.theta[l]['w'] = np.clip(self.theta[l]['w'] - w_dec, -1, 1)
             self.theta[l]['b'] = np.clip(self.theta[l]['b'] - b_dec, -1, 1)
+            # self.theta[l]['w'] = self.theta[l]['w'] - w_dec
+            # self.theta[l]['b'] = self.theta[l]['b'] - b_dec
 
         # TODO add some other optimizers? adagard
 
@@ -192,7 +178,8 @@ class Network:
         for epoch in range(1, max_epochs+1):
             for x, c in get_mini_batches(Xt, Ct, batch_size):
                 loss, _ = self.forward(x, c)
-                self.optimize(c)
+                self.backprop(c)
+                self.update_theta(c)
             if test_data:
                 epoch_num_for_plot.append(epoch)
                 for ds_name, ds in test_data.items():
@@ -207,6 +194,7 @@ class Network:
         :return:
         """
         # A = softmax(affine_transform(self.weights, X, self.biases))
+        # a.shape [output_dim, samples]
         _, A = self.forward(X, c)
         return np.argmax(A, axis=0)
 
@@ -218,6 +206,5 @@ class Network:
         X, C = dataset
         Y_true = np.argmax(C, axis=0)
         Y_predicted = self.predict(X, C)
-        # TODO - check if the predict is good, and if the calculation of the accuracy
         accuracy = np.mean(Y_predicted == Y_true)
         return accuracy
