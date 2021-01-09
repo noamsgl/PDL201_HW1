@@ -2,6 +2,24 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
+def get_mini_batches(X, C, mini_batch_size):
+    """
+    A generator which yields mini_batches
+    :param X:
+    :param C:
+    :param mini_batch_size:
+    :return:
+    """
+    n, m = X.shape
+    l, _ = C.shape
+    num_batches = int(m / mini_batch_size)
+
+    batches_idxs = np.array_split(np.random.permutation(m), num_batches)
+    for batch_idxs in batches_idxs:
+        mbatch = batch_idxs.size
+        yield X[:, batch_idxs].reshape(n, mbatch), C[:, batch_idxs].reshape(l, mbatch)
+
+
 def affine_transform(W, X, B):
     """
     :param W: (dim_output, dim_input)
@@ -18,7 +36,8 @@ def softmax(Z):
     :param Z : (dim_output, num_samples) values to apply softmax on
     :return : (dim_output, num_samples) softmax(Z) on every column
     """
-    exps = np.exp(Z)
+    max_z = np.max(Z)
+    exps = np.exp(Z - max_z)
     return exps / np.sum(exps, axis=0)
 
 
@@ -31,8 +50,36 @@ def F_objective(A, C):
     """
     num_samples = C.shape[1]
     a = np.log(A)  # a is (dim_output, [, samples])
-    loss = np.sum(a * C)  # loss for each class, loss is (1, dim_output)
-    return (-1 / num_samples) * np.sum(loss)
+    # loss = np.sum(a * C)  # loss for each class, loss is (1, dim_output)
+    return (-1 / num_samples) * np.sum(a * C)
+
+
+def initialize_data_for_test(input_dim, m, output_dim, L):
+    x = np.random.randn(input_dim, m)
+    c = np.zeros((output_dim, m))
+    labels = np.random.choice(range(output_dim), size=m)
+    # set c to be '1-hot' vectors for each label, shape [output_dim, m]
+    c[labels, np.arange(m)] = 1
+
+    return c, x
+
+
+def initialize_theta(layers_sizes, init_with_none=False):
+    theta = {}
+    for i, (d1, d2) in enumerate(zip(layers_sizes[:-1], layers_sizes[1:]), 1):
+        theta[i] = {}
+        theta[i]['w'] = None if init_with_none else np.random.random((d2, d1))
+        theta[i]['b'] = None if init_with_none else np.random.random((d2, 1))
+    return theta
+
+
+def initialize_steps(layers_sizes):
+    theta = {}
+    for i, (d1, d2) in enumerate(zip(layers_sizes[:-1], layers_sizes[1:]), 1):
+        theta[i] = {}
+        theta[i]['w'] = np.zeros((d2, d1))
+        theta[i]['b'] = np.zeros((d2, 1))
+    return theta
 
 
 def grad_F(X, A, C):
@@ -46,7 +93,7 @@ def grad_F(X, A, C):
     return (1 / m) * (A - C) @ X.T
 
 
-def plot_gradient_test(num_samples, input_dimension, output_dimension, iterations):
+def plot_gradient_test_old(num_samples, input_dimension, output_dimension, iterations):
     """
     :param num_samples: number of samples
     :param input_dimension:
@@ -110,3 +157,4 @@ def plot_gradient_test(num_samples, input_dimension, output_dimension, iteration
     axs[2].set_ylim([0, 10])
     axs[2].legend()
     axs[2].set_facecolor('w')
+    plt.show()

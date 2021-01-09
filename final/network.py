@@ -1,8 +1,6 @@
 from collections import defaultdict
-
 import numpy as np
-
-from utils import affine_transform, softmax, grad_F, F_objective
+from utils import affine_transform, softmax, F_objective, initialize_theta, get_mini_batches, initialize_steps
 
 TANH = "tanh"
 RELU = "relu"
@@ -11,7 +9,8 @@ SOFTMAX = "softmax"
 
 class Network:
 
-    def __init__(self, input_dimension, output_dimension, hidden_layers_sizes=None, activation=TANH, loss_func=SOFTMAX):
+    def __init__(self, input_dimension, output_dimension, hidden_layers_sizes=None,
+                 activation=TANH, loss_func=SOFTMAX, optimizer=None, learning_rate=0.1, gamma=0.5):
         """
         Instantiate a new neural network.
         :param input_dimension:
@@ -24,17 +23,39 @@ class Network:
         self.output_dim = output_dimension
         self.L = len(hidden_layers_sizes) + 1
         self.layers_sizes = [input_dimension] + hidden_layers_sizes + [output_dimension]
-        self.theta = self.initialize_theta() # dict from layerNum - l to (weights_l, bias_l)
+        self.theta = initialize_theta(self.layers_sizes) # dict from layerNum - l to (weights_l, bias_l)
         self.z = {} # dict from layerNum - l to [w_l @ x + b_l], shape - [layers_sizes[l], layers_sizes[l-1]]
         self.a = {} # dict from layerNum - l to activation(z), shape - [layers_sizes[l], layers_sizes[l-1]]
         self.activation = activation
         self.loss_func = loss_func
-
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.optimizer = optimizer
+        if optimizer:
+            self.steps_for_opt = initialize_steps(self.layers_sizes)
         self.w_grads = {} # dict to remember calculations of derivatives for backpropogation
         self.b_grads = {} # dict to remember calculations of derivatives for backpropogation
 
+        self.theta_for_grad_test = initialize_theta(self.layers_sizes, True)
+
+    def set_theta_for_grad_test(self, l, p, theta_for_test):
+        self.theta_for_grad_test[l][p] = theta_for_test.copy()
+
     def get_w_b(self, l):
-        return self.theta[l]['w'], self.theta[l]['b']
+        w, b = self.theta[l]['w'], self.theta[l]['b']
+        if self.theta_for_grad_test[l].get('w') is not None:
+            w += self.theta_for_grad_test[l].get('w')
+            self.theta_for_grad_test[l].clear()
+        if self.theta_for_grad_test[l].get('b') is not None:
+            b += self.theta_for_grad_test[l].get('b')
+            self.theta_for_grad_test[l].clear()
+        return w, b
+
+    def get_grads(self, l, p):
+        if p == 'w':
+            return self.w_grads[l]
+        else:
+            return self.b_grads[l]
 
     def forward(self, x, c):
         """
@@ -85,7 +106,9 @@ class Network:
         # [self.layers_sizes[self.L - 1], m]
         df_dx = dz_dx.T @ df_dz
         # [output_dim, 1], dz_db is all ones
+        # TODO - check if 2 next lines are equals, delete the one in the comment
         df_db = df_dz @ np.ones((m, 1))
+        # df_db = np.sum(df_dz, axis=1, keepdims=True)
 
         return df_dw, df_dx, df_db
 
@@ -117,7 +140,9 @@ class Network:
         df_dx = dz_dx.T @ df_dz
         # [output_dim, 1], dz_db is all ones
         # TODO - check if need (1/m) *
+        # TODO - check if 2 next lines are equals, delete the one in the comment
         df_db = df_dz @ np.ones((m, 1))
+        # df_db = np.sum(df_dz, axis=1, keepdims=True)
 
         return df_dw, df_dx, df_db
 
@@ -128,79 +153,52 @@ class Network:
             df_da = df_dx.copy()
             self.w_grads[l], df_dx, self.b_grads[l] = self.back_hidden(m, l, df_da)
 
-    def optimize(self, c, optimizer=None, lr=0.1):
+    def optimize(self, c):
         self.backprop(c)
-        if optimizer is None:
-            for l in range(1, self.L + 1):
-                self.theta[l]['w'] = self.theta[l]['w'] - self.w_grads[l] * lr
-                self.theta[l]['b'] = self.theta[l]['b'] - self.b_grads[l] * lr
-        # elif optimizer == "momentum" / "adagard":
-            # todo some other optimizers
+        for l in range(1, self.L + 1):
+            if self.optimizer is None:
+                # TODO - check if clip func is good for us, and if needed to be done on each vector seperatly
+                #  or can be done on all matrix
+                w_dec = self.w_grads[l] * self.learning_rate
+                b_dec = self.b_grads[l] * self.learning_rate
+                # self.theta[l]['w'] = np.clip(self.theta[l]['w'] - self.w_grads[l] * self.learning_rate, -1, 1)
+                # self.theta[l]['b'] = np.clip(self.theta[l]['b'] - self.b_grads[l] * self.learning_rate, -1, 1)
+                # self.theta[l]['w'] = self.theta[l]['w'] - self.w_grads[l] * self.learning_rate
+                # self.theta[l]['b'] = self.theta[l]['b'] - self.b_grads[l] * self.learning_rate
+            elif self.optimizer == "momentum":
+            # for l in range(1, self.L + 1):
+                # TODO - check if clip func is good for us, and if needed to be done on each vector seperatly
+                #  or can be done on all matrix
+                self.steps_for_opt[l]['w'] = self.steps_for_opt[l]['w'] * self.gamma + self.w_grads[l] * self.learning_rate
+                w_dec = self.steps_for_opt[l]['w']
+                self.steps_for_opt[l]['b'] = self.steps_for_opt[l]['b'] * self.gamma + self.b_grads[l] * self.learning_rate
+                b_dec = self.steps_for_opt[l]['b']
+                # self.theta[l]['w'] = self.theta[l]['w'] - self.steps_for_opt[l]['w']
+                # self.theta[l]['b'] = self.theta[l]['b'] - self.steps_for_opt[l]['b']
+                # self.theta[l]['w'] = np.clip(self.theta[l]['w'] - self.steps_for_opt[l]['w'], -1, 1)
+                # self.theta[l]['b'] = np.clip(self.theta[l]['b'] - self.steps_for_opt[l]['b'], -1, 1)
+            self.theta[l]['w'] = np.clip(self.theta[l]['w'] - w_dec, -1, 1)
+            self.theta[l]['b'] = np.clip(self.theta[l]['b'] - b_dec, -1, 1)
 
-    def train(self, Xt, Ct, test_data=None, max_epochs=100, batch_size=100, learning_rate=0.1):
+        # TODO add some other optimizers? adagard
+
+    def train(self, Xt, Ct, test_data=None, max_epochs=100, batch_size=100):
         assert Xt.shape[0] == self.input_dim, 'input dimension of Xt is different from NET input_dim'
         assert Xt.shape[1] == Ct.shape[1], 'number of samples is different between Xt and Ct'
-        # assert (Xv is None and Cv is None) or (Xv is not None and Cv is not None), 'validation X and C must be similar'
-        # assert (test_data is None and not score_every_epoch) or (test_data and score_every_epoch)
-
+        # TODO - check if the data collecting to the test are ok... graphs are bad...
         if test_data:
-            x_plot, y_plots = [], defaultdict(list)
-            # TODO - initialize dicts to save score for each epoch
+            epoch_num_for_plot, accuracy_for_epoch = [], defaultdict(list)
 
-        for epoch in range(1, max_epochs):
-            for x, c in self.get_mini_batches(Xt, Ct, batch_size):
+        for epoch in range(1, max_epochs+1):
+            for x, c in get_mini_batches(Xt, Ct, batch_size):
                 loss, _ = self.forward(x, c)
-                self.optimize(c, lr=learning_rate)
+                self.optimize(c)
             if test_data:
-                x_plot.append(epoch)
+                epoch_num_for_plot.append(epoch)
                 for ds_name, ds in test_data.items():
-                    y_plots[ds_name].append(self.score(ds))
-                pass
-                # TODO - save all scores verify
+                    accuracy_for_epoch[ds_name].append(self.score(ds))
         if test_data:
-            return x_plot, y_plots
-
-
-    def stochastic_gradient_descent(self, X, C, learning_rate=0.15, mini_batch_size=100, num_epochs=100, epsilon=1e-4,
-                                    test_data=None):
-        """
-        Optimize W for the given X,Y using stochastic gradient descent
-        :param X: (input_dimension, num_samples)
-        :param C: (output_dimension, num_samples)
-        :param learning_rate:
-        :param num_epochs:
-        :param mini_batch_size:
-        :param test_data: dict<name, test set>. if given, the SGD will evaluate on the given test_data and return results.
-        :return: x_plot, y_plots: values for plotting results
-        """
-
-        n, m = X.shape
-        l, _ = C.shape
-        Ws = self.weights.flatten()
-        x_plot, y_plots = [], defaultdict(list)
-
-        # loop num_epochs times
-        for i in range(1, num_epochs):
-            # iterate over mini-batches
-            for X, C in self.get_mini_batches(X, C, mini_batch_size):
-                A = softmax(affine_transform(self.weights, X, self.biases))
-                gradient = grad_F(X, A, C)
-                self.weights = self.weights - learning_rate * gradient
-
-            #     todo: update biases
-
-            # Ws (num_epochs, output_dimension*input_dimension) - a flattened weights array for each epoch
-            Ws = np.r_[Ws, self.weights.flatten()]
-
-            if test_data is not None:
-                x_plot.append(i)
-                for ds_name, ds in test_data.items():
-                    y_plots[ds_name].append(self.score(ds))
-
-            if np.linalg.norm(Ws[-1] - Ws[-2]) / np.linalg.norm(Ws[-2]) < epsilon:
-                break
-
-        return x_plot, y_plots
+            return epoch_num_for_plot, accuracy_for_epoch
 
     def predict(self, X, c):
         """
@@ -220,49 +218,6 @@ class Network:
         X, C = dataset
         Y_true = np.argmax(C, axis=0)
         Y_predicted = self.predict(X, C)
+        # TODO - check if the predict is good, and if the calculation of the accuracy
         accuracy = np.mean(Y_predicted == Y_true)
         return accuracy
-
-    def get_mini_batches(self, X, C, mini_batch_size):
-        """
-        A generator which yields mini_batches
-        :param X:
-        :param C:
-        :param mini_batch_size:
-        :return:
-        """
-        n, m = X.shape
-        l, _ = C.shape
-        num_batches = int(m / mini_batch_size)
-
-        batches_idxs = np.array_split(np.random.permutation(m), num_batches)
-        for batch_idxs in batches_idxs:
-            mbatch = batch_idxs.size
-            yield X[:, batch_idxs].reshape(n, mbatch), C[:, batch_idxs].reshape(l, mbatch)
-
-        # i = 1
-        # for d1, d2 in zip(self.layers_sizes[:-1], self.layers_sizes[1:]):
-        #     print(f'i={i}, d1={d1}, d2={d2}')
-        #     theta[i] = {}
-        #     theta[i]['w'] = np.random.random((d2, d1))
-        #     theta[i]['b'] = np.random.random((d2, 1))
-        #     i += 1
-    def initialize_theta(self):
-        theta = {}
-        for i, (d1, d2) in enumerate(zip(self.layers_sizes[:-1], self.layers_sizes[1:]), 1):
-            theta[i] = {}
-            theta[i]['w'] = np.random.random((d2, d1))
-            theta[i]['b'] = np.random.random((d2, 1))
-        return theta
-
-    def initialize_weights(self):
-        weights = {}
-        for i, d1, d2 in enumerate(zip(self.layers_sizes[:-1], self.layers_sizes[1:]), 1):
-            weights[i] = np.random.random((d2, d1))
-        return weights
-
-    def initialize_biases(self):
-        biases = {}
-        for i, d2 in enumerate(self.layers_sizes[1:], 1):
-            biases[i] = np.random.random((d2, 1))
-        return biases
