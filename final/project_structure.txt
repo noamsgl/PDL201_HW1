@@ -1,0 +1,10 @@
+project_name
+├── NNdata
+│   ├── GMMData.mat
+│   ├── PeaksData.mat
+│   └── SwissRollData.mat
+├── utils.py
+├── tests.py
+├── parts123.py
+├── network.py
+└── Report.ipynb

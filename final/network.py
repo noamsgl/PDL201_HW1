@@ -166,24 +166,23 @@ class Network:
             # self.theta[l]['w'] = self.theta[l]['w'] - w_dec
             # self.theta[l]['b'] = self.theta[l]['b'] - b_dec
 
-        # TODO add some other optimizers? adagard
-
     def train(self, Xt, Ct, test_data=None, max_epochs=100, batch_size=100):
         assert Xt.shape[0] == self.input_dim, 'input dimension of Xt is different from NET input_dim'
         assert Xt.shape[1] == Ct.shape[1], 'number of samples is different between Xt and Ct'
-        # TODO - check if the data collecting to the test are ok... graphs are bad...
         if test_data:
             epoch_num_for_plot, accuracy_for_epoch = [], defaultdict(list)
 
         for epoch in range(1, max_epochs+1):
-            for x, c in get_mini_batches(Xt, Ct, batch_size):
-                loss, _ = self.forward(x, c)
-                self.backprop(c)
-                self.update_theta(c)
             if test_data:
                 epoch_num_for_plot.append(epoch)
                 for ds_name, ds in test_data.items():
                     accuracy_for_epoch[ds_name].append(self.score(ds))
+
+            for x, c in get_mini_batches(Xt, Ct, batch_size):
+                loss, _ = self.forward(x, c)
+                self.backprop(c)
+                self.update_theta(c)
+
         if test_data:
             return epoch_num_for_plot, accuracy_for_epoch
 

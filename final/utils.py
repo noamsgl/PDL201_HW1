@@ -23,7 +23,7 @@ def get_mini_batches(X, C, mini_batch_size):
 def affine_transform(W, X, B):
     """
     :param W: (dim_output, dim_input)
-    :param X: (dim_input, num_sample)
+    :param X: (dim_input,  num_sample)
     :param B: (dim_output)
     :return: (dim_output, num_sample) W@X+B per sample
     """
@@ -81,7 +81,7 @@ def initialize_steps(layers_sizes):
         theta[i]['b'] = np.zeros((d2, 1))
     return theta
 
-# TODO - check if can delete
+
 def grad_F(X, A, C):
     """
     :param X:  (dim_input, num_samples) input samples
